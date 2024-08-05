@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Organizations</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Organizations</h1>
+        <ul class="list-group">
+            <% orgs.forEach(org => { %>
+            <li class="list-group-item">
+                <%= org.name %> - <a href="/orgs/<%= org.id %>/integrations" class="btn btn-info">Manage Integrations</a>
+            </li>
+            <% }) %>
+        </ul>
+    </div>
+</body>
+</html>

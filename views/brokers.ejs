@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Brokers</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Brokers for Organization</h1>
+        <% Object.entries(brokers).forEach(([name, id]) => { %>
+            <div class="list-group-item">
+                <%= name + ': ' + id %>
+                <button class="btn btn-secondary btn-sm provision-btn" data-id="<%= id %>">Create Provisional Token</button>
+                <span class="new-token" id="token-<%= id %>"></span>
+                <button class="btn btn-primary btn-sm switch-btn" data-id="<%= id %>">Switch to New Token</button>
+            </div>
+        <% }) %>
+    </div>
+    <script>
+        $(document).ready(function() {
+            $('.provision-btn').click(function() {
+                const btn = $(this);
+                const brokerId = btn.data('id');
+                $.post('/brokers/provision-token', { brokerId: brokerId }, function(data) {
+                    $('#token-' + brokerId).text(' New Token: ' + data.token);
+                }).fail(function() {
+                    $('#token-' + brokerId).text(' Failed to create token.');
+                });
+            });
+
+            $('.switch-btn').click(function() {
+                const btn = $(this);
+                const brokerId = btn.data('id');
+                const newToken = $('#token-' + brokerId).text().split(' ')[3];
+                $.post('/brokers/switch-token', { brokerId: brokerId, newToken: newToken }, function() {
+                    alert('Broker token switched successfully.');
+                }).fail(function() {
+                    alert('Failed to switch broker token.');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

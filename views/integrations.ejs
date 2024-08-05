@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Integrations</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Integrations for Organization: <%= orgId %></h1>
+        <% integrations.forEach(integration => { %>
+            <div class="list-group-item">
+                <strong><%= integration.name %></strong>: <%= integration.id %>
+                <% if (integration.brokerToken) { %>
+                    <div>Broker Token: <code><%= integration.brokerToken %></code></div>
+                <% } else { %>
+                    <div>No Broker Token</div>
+                <% } %>
+                <button class="btn btn-secondary btn-sm provision-btn" data-id="<%= integration.id %>">Create Provisional Token</button>
+                <span class="new-token" id="token-<%= integration.id %>"></span>
+                <button class="btn btn-primary btn-sm switch-btn" data-id="<%= integration.id %>">Switch to New Token</button>
+                <button class="btn btn-info btn-sm same-integration-btn" data-name="<%= integration.name %>">Find Other Orgs</button>
+            </div>
+        <% }) %>
+
+        <div id="otherOrgs" class="mt-5"></div>
+    </div>
+    <script>
+        $(document).ready(function() {
+            $('.provision-btn').click(function() {
+                const btn = $(this);
+                const integrationId = btn.data('id');
+                $.post('/orgs/<%= orgId %>/integrations/' + integrationId + '/provision-token', function(data) {
+                    $('#token-' + integrationId).text(' New Token: ' + data.token);
+                }).fail(function() {
+                    $('#token-' + integrationId).text(' Failed to create token.');
+                });
+            });
+
+            $('.switch-btn').click(function() {
+                const btn = $(this);
+                const integrationId = btn.data('id');
+                const newToken = $('#token-' + integrationId).text().split(' ')[3];
+                $.post('/orgs/<%= orgId %>/integrations/' + integrationId + '/switch-token', { newToken: newToken }, function() {
+                    alert('Token switched successfully.');
+                }).fail(function() {
+                    alert('Failed to switch token.');
+                });
+            });
+
+            $('.same-integration-btn').click(function() {
+                const btn = $(this);
+                const integrationName = btn.data('name');
+                $.get('/orgs/other-with-integration/' + integrationName, function(data) {
+                    let orgList = '<h3>Other Orgs with ' + integrationName + '</h3><ul class="list-group">';
+                    data.orgs.forEach(org => {
+                        orgList += '<li class="list-group-item">' + org.name + ' (' + org.id + ')</li>';
+                    });
+                    orgList += '</ul>';
+                    $('#otherOrgs').html(orgList);
+                }).fail(function() {
+                    $('#otherOrgs').html('Failed to fetch organizations with the same integration.');
+                });
+            });
+        });
+    </script>
+</body>
+</html>
