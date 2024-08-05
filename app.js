@@ -15,7 +15,7 @@ app.set('view engine', 'ejs');
 app.post('/set-credentials', (req, res) => {
     req.session.snykToken = req.body.snykToken;
     req.session.groupId = req.body.groupId;
-    // Remove the line setting orgId from the form
+    // Remove the line setting orgId from testtest the form
     // req.session.orgId = req.body.orgId;
     res.redirect('/home');
 });
