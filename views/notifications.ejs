@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Notifications Management</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Manage Notifications</h1>
+        <button class="btn btn-warning btn-sm" id="disable-all">Disable Notifications for All Organizations</button>
+        <ul class="list-group mt-3" id="org-list">
+            <% orgs.forEach(org => { %>
+                <li class="list-group-item" data-id="<%= org.id %>">
+                    <div>
+                        <strong><%= org.name %></strong> (<%= org.id %>)
+                    </div>
+                    <div class="notification-settings">
+                        Current Notification Settings:
+                        <ul>
+                            <li>New Issues Remediations:
+                                <span class="setting" data-setting="new-issues-remediations">
+                                    <%= org.settings['new-issues-remediations']?.enabled ? 'Enabled' : 'Disabled' %>
+                                </span>
+                            </li>
+                            <li>Weekly Report:
+                                <span class="setting" data-setting="weekly-report">
+                                    <%= org.settings['weekly-report']?.enabled ? 'Enabled' : 'Disabled' %>
+                                </span>
+                            </li>
+                            <li>Test Limit:
+                                <span class="setting" data-setting="test-limit">
+                                    <%= org.settings['test-limit']?.enabled ? 'Enabled' : 'Disabled' %>
+                                </span>
+                            </li>
+                            <li>Project Imported:
+                                <span class="setting" data-setting="project-imported">
+                                    <%= org.settings['project-imported']?.enabled ? 'Enabled' : 'Disabled' %>
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-danger btn-sm disable-btn" data-id="<%= org.id %>">Disable Notifications</button>
+                    <button class="btn btn-success btn-sm enable-btn" data-id="<%= org.id %>">Enable Notifications</button>
+                </li>
+            <% }) %>
+        </ul>
+    </div>
+    <script>
+        $(document).ready(function() {
+            function updateNotificationSettings(orgId) {
+                $.get('/notifications/' + orgId + '/settings', function(data) {
+                    const orgItem = $('li[data-id="' + orgId + '"]');
+                    if (data.settings) {
+                        orgItem.find('.setting').each(function() {
+                            const settingName = $(this).data('setting');
+                            const setting = data.settings[settingName];
+                            const enabled = setting && setting.enabled;
+                            $(this).text(enabled ? 'Enabled' : 'Disabled');
+                        });
+                    } else {
+                        alert('Failed to fetch updated settings for organization ' + orgId);
+                    }
+                }).fail(function() {
+                    alert('Failed to fetch updated settings for organization ' + orgId);
+                });
+            }
+
+            $('.disable-btn').click(function() {
+                const btn = $(this);
+                const orgId = btn.data('id');
+                $.post('/notifications/disable', { orgId: orgId }, function() {
+                    alert('Notifications disabled for organization ' + orgId);
+                    updateNotificationSettings(orgId);
+                }).fail(function() {
+                    alert('Failed to disable notifications for organization ' + orgId);
+                });
+            });
+
+            $('.enable-btn').click(function() {
+                const btn = $(this);
+                const orgId = btn.data('id');
+                $.post('/notifications/enable', { orgId: orgId }, function() {
+                    alert('Notifications enabled for organization ' + orgId);
+                    updateNotificationSettings(orgId);
+                }).fail(function() {
+                    alert('Failed to enable notifications for organization ' + orgId);
+                });
+            });
+
+            $('#disable-all').click(function() {
+                $.post('/notifications/disable-all', function() {
+                    alert('Notifications disabled for all organizations');
+                    $('#org-list .list-group-item').each(function() {
+                        const orgId = $(this).data('id');
+                        updateNotificationSettings(orgId);
+                    });
+                }).fail(function() {
+                    alert('Failed to disable notifications for all organizations');
+                });
+            });
+        });
+    </script>
+</body>
+</html>

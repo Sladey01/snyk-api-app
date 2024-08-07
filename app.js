@@ -15,8 +15,6 @@ app.set('view engine', 'ejs');
 app.post('/set-credentials', (req, res) => {
     req.session.snykToken = req.body.snykToken;
     req.session.groupId = req.body.groupId;
-    // Remove the line setting orgId from testtest the form
-    // req.session.orgId = req.body.orgId;
     res.redirect('/home');
 });
 
@@ -26,7 +24,9 @@ app.get('/home', (req, res) => res.render('home', { tokenSet: !!req.session.snyk
 
 app.get('/orgs', async (req, res) => {
     try {
-        const response = await axios.get(`https://api.snyk.io/v1/group/${req.session.groupId}/orgs`, { headers: { 'Authorization': `token ${req.session.snykToken}` } });
+        const response = await axios.get(`https://api.snyk.io/v1/group/${req.session.groupId}/orgs`, {
+            headers: { 'Authorization': `token ${req.session.snykToken}` }
+        });
         res.render('orgs', { orgs: response.data.orgs });
     } catch (error) {
         console.error('Error fetching organizations:', error);
@@ -36,18 +36,17 @@ app.get('/orgs', async (req, res) => {
 
 app.get('/orgs/:orgId/integrations', async (req, res) => {
     try {
-        const response = await axios.get(`https://api.snyk.io/v1/org/${req.params.orgId}/integrations`, { headers: { 'Authorization': `token ${req.session.snykToken}` } });
+        const response = await axios.get(`https://api.snyk.io/v1/org/${req.params.orgId}/integrations`, {
+            headers: { 'Authorization': `token ${req.session.snykToken}` }
+        });
         const integrations = Object.keys(response.data).map(key => {
             const integration = {
                 name: key,
                 id: response.data[key]
             };
-
-            // Fetch the broker token if it exists for the integration
             if (response.data[key].brokerToken) {
                 integration.brokerToken = response.data[key].brokerToken;
             }
-
             return integration;
         });
         res.render('integrations', { orgId: req.params.orgId, integrations });
@@ -57,82 +56,129 @@ app.get('/orgs/:orgId/integrations', async (req, res) => {
     }
 });
 
-
-app.get('/orgs/other-with-integration/:integrationName', async (req, res) => {
-    try {
-        const groupId = req.session.groupId;
-        const integrationName = req.params.integrationName;
-        const orgsResponse = await axios.get(`https://api.snyk.io/v1/group/${groupId}/orgs`, { headers: { 'Authorization': `token ${req.session.snykToken}` } });
-        const allOrgs = orgsResponse.data.orgs;
-
-        const orgsWithIntegration = [];
-
-        for (const org of allOrgs) {
-            const integrationsResponse = await axios.get(`https://api.snyk.io/v1/org/${org.id}/integrations`, { headers: { 'Authorization': `token ${req.session.snykToken}` } });
-            const integrations = Object.keys(integrationsResponse.data);
-
-            if (integrations.includes(integrationName)) {
-                orgsWithIntegration.push({ name: org.name, id: org.id });
-            }
-        }
-
-        res.json({ orgs: orgsWithIntegration });
-    } catch (error) {
-        console.error('Error fetching organizations with the same integration:', error);
-        res.status(500).send('Error fetching organizations');
-    }
-});
-
-app.get('/brokers', async (req, res) => {
-    try {
-        const response = await axios.get(`https://api.snyk.io/v1/org/${req.session.orgId}/integrations`, {
-            headers: { 'Authorization': `token ${req.session.snykToken}` }
-        });
-        const brokers = response.data;
-        res.render('brokers', { brokers });
-    } catch (error) {
-        console.error('Error fetching brokers:', error);
-        res.status(500).send('Error fetching brokers');
-    }
-});
-
 app.post('/orgs/:orgId/integrations/:integrationId/provision-token', async (req, res) => {
     try {
-        const response = await axios.post(`https://snyk.io/api/v1/org/${req.params.orgId}/integrations/${req.params.integrationId}/authentication/provision-token`, {}, { headers: { 'Authorization': `token ${req.session.snykToken}` } });
-        res.json({ token: response.data.provisionalBrokerToken });
+        const response = await axios.post(`https://api.snyk.io/v1/org/${req.params.orgId}/integrations/${req.params.integrationId}/authentication/provision-token`, {}, {
+            headers: { 'Authorization': `token ${req.session.snykToken}` }
+        });
+        res.json(response.data);
     } catch (error) {
-        console.error('Error creating provisional broker token:', error);
-        res.status(500).json({ message: 'Error creating provisional broker token' });
+        console.error('Error creating provisional token:', error.response ? error.response.data : error.message);
+        res.status(500).send('Failed to create provisional token');
     }
 });
 
 app.post('/orgs/:orgId/integrations/:integrationId/switch-token', async (req, res) => {
+    const provisionalToken = req.body.provisionalToken;
     try {
-        await axios.post(`https://snyk.io/api/v1/org/${req.params.orgId}/integrations/${req.params.integrationId}/authentication/switch-token`, { token: req.body.newToken }, { headers: { 'Authorization': `token ${req.session.snykToken}` } });
-        res.send({ message: 'Token switched successfully' });
+        await axios.post(`https://api.snyk.io/v1/org/${req.params.orgId}/integrations/${req.params.integrationId}/authentication/switch-token`, {
+            token: provisionalToken
+        }, {
+            headers: { 'Authorization': `token ${req.session.snykToken}` }
+        });
+        res.send('Token switched successfully');
     } catch (error) {
-        console.error('Error switching token:', error);
+        console.error('Error switching token:', error.response ? error.response.data : error.message);
         res.status(500).send('Failed to switch token');
     }
 });
 
-app.post('/brokers/provision-token', async (req, res) => {
+app.get('/notifications', async (req, res) => {
     try {
-        const response = await axios.post(`https://snyk.io/api/v1/org/${req.session.orgId}/integrations/${req.body.brokerId}/authentication/provision-token`, {}, { headers: { 'Authorization': `token ${req.session.snykToken}` } });
-        res.json({ token: response.data.provisionalBrokerToken });
+        const orgResponse = await axios.get(`https://api.snyk.io/v1/group/${req.session.groupId}/orgs`, {
+            headers: { 'Authorization': `token ${req.session.snykToken}` }
+        });
+
+        const orgs = orgResponse.data.orgs;
+        const orgSettingsPromises = orgs.map(async (org) => {
+            const settingsResponse = await axios.get(`https://api.snyk.io/v1/org/${org.id}/notification-settings`, {
+                headers: { 'Authorization': `token ${req.session.snykToken}` }
+            });
+            return {
+                id: org.id,
+                name: org.name,
+                settings: settingsResponse.data
+            };
+        });
+
+        const orgsWithSettings = await Promise.all(orgSettingsPromises);
+
+        res.render('notifications', { orgs: orgsWithSettings });
     } catch (error) {
-        console.error('Error provisioning broker token:', error);
-        res.status(500).json({ message: 'Error provisioning broker token' });
+        console.error('Error fetching organizations or settings:', error);
+        res.status(500).send('Error fetching organizations or settings');
     }
 });
 
-app.post('/brokers/switch-token', async (req, res) => {
+app.get('/notifications/:orgId/settings', async (req, res) => {
+    const orgId = req.params.orgId;
     try {
-        await axios.post(`https://snyk.io/api/v1/org/${req.session.orgId}/integrations/${req.body.brokerId}/authentication/switch-token`, { token: req.body.newToken }, { headers: { 'Authorization': `token ${req.session.snykToken}` } });
-        res.send({ message: 'Broker token switched successfully' });
+        const settingsResponse = await axios.get(`https://api.snyk.io/v1/org/${orgId}/notification-settings`, {
+            headers: { 'Authorization': `token ${req.session.snykToken}` }
+        });
+        res.json({ settings: settingsResponse.data });
     } catch (error) {
-        console.error('Error switching broker token:', error);
-        res.status(500).send('Failed to switch broker token');
+        console.error('Error fetching notification settings:', error.response ? error.response.data : error.message);
+        res.status(500).send('Error fetching notification settings');
+    }
+});
+
+app.post('/notifications/disable', async (req, res) => {
+    const orgId = req.body.orgId;
+    try {
+        await axios.put(`https://api.snyk.io/v1/org/${orgId}/notification-settings`, {
+            "new-issues-remediations": { "enabled": false, "issueSeverity": "high", "issueType": "all" },
+            "weekly-report": { "enabled": false },
+            "test-limit": { "enabled": false },
+            "project-imported": { "enabled": false }
+        }, {
+            headers: { 'Authorization': `token ${req.session.snykToken}` }
+        });
+        res.send('Notifications disabled for organization ' + orgId);
+    } catch (error) {
+        console.error('Error disabling notifications:', error.response.data);
+        res.status(500).send('Error disabling notifications for organization');
+    }
+});
+
+app.post('/notifications/enable', async (req, res) => {
+    const orgId = req.body.orgId;
+    try {
+        await axios.put(`https://api.snyk.io/v1/org/${orgId}/notification-settings`, {
+            "new-issues-remediations": { "enabled": true, "issueSeverity": "high", "issueType": "all" },
+            "weekly-report": { "enabled": true },
+            "test-limit": { "enabled": true },
+            "project-imported": { "enabled": true }
+        }, {
+            headers: { 'Authorization': `token ${req.session.snykToken}` }
+        });
+        res.send('Notifications enabled for organization ' + orgId);
+    } catch (error) {
+        console.error('Error enabling notifications:', error.response.data);
+        res.status(500).send('Error enabling notifications for organization');
+    }
+});
+
+app.post('/notifications/disable-all', async (req, res) => {
+    try {
+        const response = await axios.get(`https://api.snyk.io/v1/group/${req.session.groupId}/orgs`, {
+            headers: { 'Authorization': `token ${req.session.snykToken}` }
+        });
+        const disablePromises = response.data.orgs.map(org =>
+            axios.put(`https://api.snyk.io/v1/org/${org.id}/notification-settings`, {
+                "new-issues-remediations": { "enabled": false, "issueSeverity": "high", "issueType": "all" },
+                "weekly-report": { "enabled": false },
+                "test-limit": { "enabled": false },
+                "project-imported": { "enabled": false }
+            }, {
+                headers: { 'Authorization': `token ${req.session.snykToken}` }
+            })
+        );
+        await Promise.all(disablePromises);
+        res.send('Notifications disabled for all organizations');
+    } catch (error) {
+        console.error('Error disabling notifications for all organizations:', error.response.data);
+        res.status(500).send('Error disabling notifications for all organizations');
     }
 });
 

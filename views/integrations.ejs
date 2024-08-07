@@ -9,58 +9,31 @@
 <body>
     <div class="container mt-5">
         <h1>Integrations for Organization: <%= orgId %></h1>
-        <% integrations.forEach(integration => { %>
-            <div class="list-group-item">
-                <strong><%= integration.name %></strong>: <%= integration.id %>
-                <% if (integration.brokerToken) { %>
-                    <div>Broker Token: <code><%= integration.brokerToken %></code></div>
-                <% } else { %>
-                    <div>No Broker Token</div>
-                <% } %>
-                <button class="btn btn-secondary btn-sm provision-btn" data-id="<%= integration.id %>">Create Provisional Token</button>
-                <span class="new-token" id="token-<%= integration.id %>"></span>
-                <button class="btn btn-primary btn-sm switch-btn" data-id="<%= integration.id %>">Switch to New Token</button>
-                <button class="btn btn-info btn-sm same-integration-btn" data-name="<%= integration.name %>">Find Other Orgs</button>
-            </div>
-        <% }) %>
-
-        <div id="otherOrgs" class="mt-5"></div>
+        <ul class="list-group">
+            <% integrations.forEach(integration => { %>
+                <li class="list-group-item">
+                    <%= integration.name + ': ' + integration.id %>
+                    <button class="btn btn-secondary btn-sm provision-btn" data-id="<%= integration.id %>">Create Provisional Token</button>
+                    <form action="/orgs/<%= orgId %>/integrations/<%= integration.id %>/switch-token" method="post" class="form-inline mt-2">
+                        <input type="text" name="provisionalToken" placeholder="Enter new token" class="form-control mb-2 mr-sm-2" required>
+                        <button type="submit" class="btn btn-primary mb-2">Switch Token</button>
+                    </form>
+                    <% if (integration.brokerToken) { %>
+                        <div>Broker Token: <%= integration.brokerToken %></div>
+                    <% } %>
+                </li>
+            <% }) %>
+        </ul>
     </div>
     <script>
         $(document).ready(function() {
             $('.provision-btn').click(function() {
-                const btn = $(this);
-                const integrationId = btn.data('id');
+                const integrationId = $(this).data('id');
                 $.post('/orgs/<%= orgId %>/integrations/' + integrationId + '/provision-token', function(data) {
-                    $('#token-' + integrationId).text(' New Token: ' + data.token);
-                }).fail(function() {
-                    $('#token-' + integrationId).text(' Failed to create token.');
-                });
-            });
-
-            $('.switch-btn').click(function() {
-                const btn = $(this);
-                const integrationId = btn.data('id');
-                const newToken = $('#token-' + integrationId).text().split(' ')[3];
-                $.post('/orgs/<%= orgId %>/integrations/' + integrationId + '/switch-token', { newToken: newToken }, function() {
-                    alert('Token switched successfully.');
-                }).fail(function() {
-                    alert('Failed to switch token.');
-                });
-            });
-
-            $('.same-integration-btn').click(function() {
-                const btn = $(this);
-                const integrationName = btn.data('name');
-                $.get('/orgs/other-with-integration/' + integrationName, function(data) {
-                    let orgList = '<h3>Other Orgs with ' + integrationName + '</h3><ul class="list-group">';
-                    data.orgs.forEach(org => {
-                        orgList += '<li class="list-group-item">' + org.name + ' (' + org.id + ')</li>';
-                    });
-                    orgList += '</ul>';
-                    $('#otherOrgs').html(orgList);
-                }).fail(function() {
-                    $('#otherOrgs').html('Failed to fetch organizations with the same integration.');
+                    alert('Provisional token created: ' + data.provisionalBrokerToken);
+                }).fail(function(jqXHR) {
+                    console.error('Error response:', jqXHR.responseJSON || jqXHR.responseText);
+                    alert('Failed to create provisional token for integration ' + integrationId);
                 });
             });
         });

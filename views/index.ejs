@@ -2,26 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Home</title>
+    <title>Snyk API App</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 </head>
 <body>
     <div class="container mt-5">
-        <h1>Welcome to the Snyk API App</h1>
+        <h1>Enter Snyk Credentials</h1>
         <form action="/set-credentials" method="post">
             <div class="form-group">
-                <label for="snykToken">Snyk API Token</label>
-                <input type="text" id="snykToken" name="snykToken" class="form-control" required>
+                <label for="snykToken">Snyk API Token:</label>
+                <input type="password" class="form-control" id="snykToken" name="snykToken" required>
             </div>
             <div class="form-group">
-                <label for="groupId">Group ID</label>
-                <input type="text" id="groupId" name="groupId" class="form-control" required>
+                <label for="groupId">Snyk Group ID:</label>
+                <input type="text" class="form-control" id="groupId" name="groupId" required>
             </div>
-            <!-- Removed Organization ID field -->
-            <button type="submit" class="btn btn-primary">Set Credentials</button>
+            <button type="submit" class="btn btn-primary">Submit</button>
         </form>
-        <hr>
-        <a href="/orgs" class="btn btn-info">List Organizations</a>
     </div>
 </body>
 </html>
